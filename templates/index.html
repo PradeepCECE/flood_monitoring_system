@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flood Monitoring Dashboard</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body class="theme-normal">
+  <main class="page-shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Rural Environmental Monitor</p>
+        <h1>Flood Monitoring Dashboard</h1>
+        <p class="subtitle">Plain HTML, CSS and JavaScript. Live weather cards, daily summaries, and a 3-day sliding flood check.</p>
+      </div>
+      <div class="hero-side">
+        <div class="badge" id="riskBadge">Loading...</div>
+        <p class="mini">Auto-refresh every 3 hours</p>
+      </div>
+    </section>
+
+    <section class="grid weather-grid" id="weatherGrid">
+      <div class="card stat-card"><h3>Rainfall (last 3hr)</h3><p id="rainfallValue">-- mm</p></div>
+      <div class="card stat-card"><h3>Temperature</h3><p id="temperatureValue">-- °C</p></div>
+      <div class="card stat-card"><h3>Humidity</h3><p id="humidityValue">-- %</p></div>
+      <div class="card stat-card"><h3>Pressure</h3><p id="pressureValue">-- hPa</p></div>
+      <div class="card stat-card"><h3>Wind Speed</h3><p id="windValue">-- m/s</p></div>
+      <div class="card stat-card"><h3>Cloud Coverage</h3><p id="cloudValue">-- %</p></div>
+    </section>
+
+    <section class="grid two-col">
+      <div class="card panel">
+        <div class="panel-head">
+          <h2>Current Decision</h2>
+          <span id="probabilityValue">0%</span>
+        </div>
+        <p id="reasonText">No prediction available yet.</p>
+      </div>
+
+      <div class="card panel">
+        <div class="panel-head">
+          <h2>System Status</h2>
+          <span id="timestampValue">--</span>
+        </div>
+        <p id="statusText">Waiting for weather data.</p>
+      </div>
+    </section>
+
+    <section class="grid two-col">
+      <div class="card panel">
+        <h2>Last 3 Daily Summaries</h2>
+        <div id="summaryList" class="list-stack"></div>
+      </div>
+
+      <div class="card panel">
+        <h2>Recent Alerts</h2>
+        <div id="alertList" class="list-stack"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    window.APP_CONFIG = { refreshMs:10800000  };
+  </script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
