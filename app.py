@@ -65,3 +65,10 @@ def manual_collect():
 def manual_predict():
     daily_prediction_job()
     return jsonify({'ok': True})
+
+from services.weather_service import fetch_weather_snapshot
+
+@app.route("/api/weather")
+def api_weather():
+    weather = fetch_weather_snapshot()
+    return jsonify(weather)
