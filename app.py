@@ -55,10 +55,10 @@ def api_status():
     return jsonify(build_dashboard_payload())
 
 
-@app.route('/api/manual/collect', methods=['POST'])
+@app.route("/api/manual/collect", methods=["GET","POST"])
 def manual_collect():
     collection_job()
-    return jsonify({'ok': True})
+    return jsonify({"ok": True})
 
 
 @app.route('/api/manual/predict', methods=['POST'])
