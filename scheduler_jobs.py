@@ -17,15 +17,12 @@ def collection_job():
     if not weather:
         return
 
-    day = weather["recorded_at"][:10]
-
-    # Send rain notification
+    # Send rain notification if rain detected
     if weather["rainfall_mm"] >= RAIN_PRESENT_3H_MM:
-        send_rain_update(day, weather["rainfall_mm"])
+        send_rain_update(weather["recorded_at"][:10], weather["rainfall_mm"])
 
-    # Update today's summary
-    summarize_day(day)
-
+    # Update daily summary
+    summarize_day(weather["recorded_at"][:10])
 
 def daily_prediction_job():
     target_day = yesterday_utc()
