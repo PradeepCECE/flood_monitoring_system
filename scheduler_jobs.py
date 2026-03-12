@@ -4,53 +4,51 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from config import COLLECTION_INTERVAL_HOURS, RAIN_PRESENT_3H_MM
 from services.weather_service import collect_and_store_weather
-from services.aggregation_service import summarize_day, yesterday_utc, get_recent_daily_summaries
+from services.aggregation_service import summarize_day, yesterday_utc
 from services.risk_engine import run_risk_prediction
-from services.email_service import send_rain_update, send_flood_alert
+from services.email_service import send_flood_alert
 
 scheduler = BackgroundScheduler(timezone="UTC")
 
 
 def collection_job():
+
     weather = collect_and_store_weather()
 
     if not weather:
         return
 
-    # Send rain notification if rain detected
-    if weather["rainfall_mm"] >= RAIN_PRESENT_3H_MM:
-        send_rain_update(weather["recorded_at"][:10], weather["rainfall_mm"])
-
-    # Update daily summary
+    # Update summary continuously
     summarize_day(weather["recorded_at"][:10])
 
-def daily_prediction_job():
-    target_day = yesterday_utc()
 
-    summary = summarize_day(target_day)
-    if not summary:
-        return
+def daily_prediction_job():
+
+    # Create summary for yesterday
+    day = yesterday_utc()
+
+    summarize_day(day)
 
     result = run_risk_prediction()
 
     if not result:
+        print("Sliding window not ready")
         return
 
     probability, risk_level, reason = result
 
-    if risk_level in {"HIGH", "MODERATE"}:
-        window = get_recent_daily_summaries(3)
-        rolling_total = sum(day["total_rainfall_mm"] for day in window)
+    if probability >= 0.5:
 
         send_flood_alert(
-            target_day,
+            day,
             probability,
-            rolling_total,
+            0,
             reason,
         )
 
 
 def start_scheduler():
+
     if scheduler.running:
         return
 
@@ -65,8 +63,8 @@ def start_scheduler():
     scheduler.add_job(
         daily_prediction_job,
         "cron",
-        hour=23,
-        minute=59,
+        hour=0,
+        minute=5,
         id="daily_prediction",
         replace_existing=True,
     )
