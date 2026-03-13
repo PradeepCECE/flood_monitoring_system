@@ -1,18 +1,14 @@
-import sqlite3
+import os
+import psycopg2
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
-from config import DB_PATH
-
-
-def dict_factory(cursor, row):
-    return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
+from config import DATABASE_URL
 
 
 @contextmanager
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = dict_factory
+    conn = psycopg2.connect(DATABASE_URL)
     try:
         yield conn
         conn.commit()
@@ -21,72 +17,103 @@ def get_connection():
 
 
 def init_db() -> None:
-    with get_connection() as conn:
-        conn.executescript(
-            '''
-            CREATE TABLE IF NOT EXISTS hourly_records (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                recorded_at TEXT NOT NULL,
-                source_slot TEXT,
-                rainfall_mm REAL NOT NULL,
-                temperature_c REAL NOT NULL,
-                humidity_pct REAL NOT NULL,
-                pressure_hpa REAL NOT NULL,
-                wind_speed_ms REAL NOT NULL,
-                cloud_coverage_pct REAL NOT NULL,
-                is_valid INTEGER NOT NULL DEFAULT 1,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
 
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+
+            # Hourly weather records
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS hourly_records (
+                id SERIAL PRIMARY KEY,
+                recorded_at TIMESTAMP NOT NULL,
+                source_slot TEXT,
+                rainfall_mm FLOAT NOT NULL,
+                temperature_c FLOAT NOT NULL,
+                humidity_pct FLOAT NOT NULL,
+                pressure_hpa FLOAT NOT NULL,
+                wind_speed_ms FLOAT NOT NULL,
+                cloud_coverage_pct FLOAT NOT NULL,
+                is_valid INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """)
+
+            cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_hourly_records_time
             ON hourly_records(recorded_at);
+            """)
 
+            # Daily summaries
+            cur.execute("""
             CREATE TABLE IF NOT EXISTS daily_summaries (
-                day TEXT PRIMARY KEY,
-                total_rainfall_mm REAL NOT NULL,
-                avg_temperature_c REAL NOT NULL,
-                avg_humidity_pct REAL NOT NULL,
-                avg_pressure_hpa REAL NOT NULL,
-                avg_wind_speed_ms REAL NOT NULL,
+                day DATE PRIMARY KEY,
+                total_rainfall_mm FLOAT NOT NULL,
+                avg_temperature_c FLOAT NOT NULL,
+                avg_humidity_pct FLOAT NOT NULL,
+                avg_pressure_hpa FLOAT NOT NULL,
+                avg_wind_speed_ms FLOAT NOT NULL,
                 reading_count INTEGER NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            """)
 
+            # Prediction table
+            cur.execute("""
             CREATE TABLE IF NOT EXISTS daily_predictions (
-                day TEXT PRIMARY KEY,
-                risk_probability REAL NOT NULL,
+                day DATE PRIMARY KEY,
+                risk_probability FLOAT NOT NULL,
                 risk_level TEXT NOT NULL,
                 reason TEXT NOT NULL,
                 window_ready INTEGER NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            """)
 
+            # Alert table
+            cur.execute("""
             CREATE TABLE IF NOT EXISTS alerts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                day TEXT NOT NULL,
+                id SERIAL PRIMARY KEY,
+                day DATE NOT NULL,
                 alert_type TEXT NOT NULL,
                 message TEXT NOT NULL,
-                sent INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                sent INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(day, alert_type)
             );
+            """)
 
+            cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_alerts_day
             ON alerts(day);
-            '''
-        )
+            """)
 
     print("Database initialized successfully.")
+
+
 def execute(query: str, params: tuple = ()) -> None:
     with get_connection() as conn:
-        conn.execute(query, params)
+        with conn.cursor() as cur:
+            cur.execute(query, params)
 
 
 def fetch_one(query: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
     with get_connection() as conn:
-        return conn.execute(query, params).fetchone()
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            row = cur.fetchone()
+
+            if not row:
+                return None
+
+            columns = [desc[0] for desc in cur.description]
+            return dict(zip(columns, row))
 
 
 def fetch_all(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
     with get_connection() as conn:
-        return conn.execute(query, params).fetchall()
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            rows = cur.fetchall()
+
+            columns = [desc[0] for desc in cur.description]
+            return [dict(zip(columns, r)) for r in rows]

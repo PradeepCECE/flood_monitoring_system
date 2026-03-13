@@ -2,7 +2,10 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "flood_monitor.db"
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://flood_user:bmaSpCJvNWzUjKkrJQbAVsWkOz798sCO@dpg-d6q15ok50q8c73cfd40g-a/flood_monitor"
+)
 
 # --------------------------------------------------
 # OpenWeather API Configuration
