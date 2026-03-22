@@ -8,7 +8,7 @@ from config import DATABASE_URL
 
 @contextmanager
 def get_connection():
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = psycopg.connect(DATABASE_URL)
     try:
         yield conn
         conn.commit()
